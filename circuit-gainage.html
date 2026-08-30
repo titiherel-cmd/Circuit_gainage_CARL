@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Circuit Gainage — Lun/Mer/Ven</title>
+<style>
+  :root{
+    --bg:#eef1ea;
+    --panel:#ffffff;
+    --ink:#20301f;
+    --ink-soft:#5a6b57;
+    --pine:#33422c;
+    --pine-deep:#233021;
+    --work:#2f6f6b;
+    --rest:#a9722f;
+    --line:#d7ddcd;
+    --done:#4f7a4a;
+    --today-ring:#c96f4a;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Iowan Old Style','Georgia',serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:20px 14px 60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+
+  header{margin-bottom:18px;}
+  .eyebrow{
+    font-family:'JetBrains Mono','Courier New',monospace;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-soft);margin:0 0 4px;
+  }
+  h1{
+    font-family:'Fraunces','Iowan Old Style',serif;
+    font-weight:600;
+    font-size:28px;
+    margin:0;
+    color:var(--pine-deep);
+    letter-spacing:-0.01em;
+  }
+  .sub{font-size:13.5px;color:var(--ink-soft);margin-top:6px;font-family:sans-serif;}
+
+  .card{
+    background:var(--panel);
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    padding:18px;
+    margin-bottom:16px;
+  }
+
+  /* ---- Weekly planner ---- */
+  .week-row{display:flex;gap:8px;margin-top:10px;}
+  .day-cell{
+    flex:1;text-align:center;padding:10px 4px;border-radius:12px;
+    border:1px solid var(--line);cursor:pointer;user-select:none;
+    font-family:sans-serif;transition:background .15s, border-color .15s;
+    position:relative;
+  }
+  .day-cell .dname{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .day-cell .dnum{font-size:15px;font-weight:600;margin-top:2px;}
+  .day-cell.rest{opacity:.35;cursor:default;}
+  .day-cell.train{border-color:var(--pine);}
+  .day-cell.done{background:var(--done);border-color:var(--done);}
+  .day-cell.done .dname,.day-cell.done .dnum{color:#fff;}
+  .day-cell.today{box-shadow:0 0 0 2px var(--today-ring);}
+  .week-summary{font-family:sans-serif;font-size:12.5px;color:var(--ink-soft);margin-top:10px;text-align:center;}
+
+  /* ---- Session/timer ---- */
+  .stage{
+    display:flex;flex-direction:column;align-items:center;text-align:center;
+  }
+  .round-tag{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);letter-spacing:.08em;text-transform:uppercase;}
+  .ex-name{font-family:'Fraunces',serif;font-size:22px;font-weight:600;margin:6px 0 2px;color:var(--pine-deep);}
+  .ex-reps{font-size:13px;color:var(--ink-soft);font-family:sans-serif;margin-bottom:14px;}
+  .ring-wrap{position:relative;width:220px;height:220px;margin:6px 0 10px;}
+  .ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:var(--line);stroke-width:10;}
+  .ring-fg{fill:none;stroke:var(--work);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .3s linear, stroke .3s;}
+  .ring-fg.rest{stroke:var(--rest);}
+  .time-label{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono','Courier New',monospace;font-size:44px;font-weight:600;color:var(--pine-deep);
+  }
+  .cue{font-size:13px;font-family:sans-serif;color:var(--ink-soft);max-width:360px;line-height:1.5;margin-bottom:14px;}
+  .controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  button{
+    font-family:sans-serif;font-size:14px;font-weight:600;
+    border:none;border-radius:999px;padding:11px 20px;cursor:pointer;
+    transition:transform .1s, opacity .15s;
+  }
+  button:active{transform:scale(.96);}
+  .btn-primary{background:var(--pine);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--pine);border:1px solid var(--pine);}
+  .btn-quiet{background:var(--line);color:var(--ink);}
+  .idle-msg{font-family:sans-serif;font-size:13.5px;color:var(--ink-soft);margin:6px 0 16px;}
+
+  /* ---- Program list ---- */
+  .prog-item{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-family:sans-serif;}
+  .prog-item:last-child{border-bottom:none;}
+  .prog-item .pn{font-weight:600;font-size:14px;}
+  .prog-item .pr{font-size:12.5px;color:var(--ink-soft);}
+  .prog-item input{
+    width:52px;text-align:center;border:1px solid var(--line);border-radius:8px;
+    padding:4px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  }
+
+  .section-title{font-family:sans-serif;font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin:0 0 10px;}
+
+  /* ---- Calendar sync ---- */
+  .cal-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+  .cal-row input[type=time]{
+    font-family:'JetBrains Mono',monospace;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;
+  }
+  .hint{font-size:12px;color:var(--ink-soft);font-family:sans-serif;margin-top:8px;line-height:1.5;}
+
+  details summary{cursor:pointer;font-family:sans-serif;font-size:13px;color:var(--pine);font-weight:600;}
+  details[open] summary{margin-bottom:10px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Lundi · Mercredi · Vendredi</p>
+    <h1>Circuit Gainage &amp; Stabilité</h1>
+    <p class="sub">3 tours complets · 45 secondes de repos entre chaque exercice</p>
+  </header>
+
+  <div class="card">
+    <p class="section-title">Cette semaine</p>
+    <div class="week-row" id="weekRow"></div>
+    <p class="week-summary" id="weekSummary"></p>
+  </div>
+
+  <div class="card">
+    <div class="stage" id="stage">
+      <p class="round-tag" id="roundTag">Prêt</p>
+      <h2 class="ex-name" id="exName">Circuit du jour</h2>
+      <p class="ex-reps" id="exReps">5 exercices · 3 tours</p>
+      <div class="ring-wrap">
+        <svg viewBox="0 0 220 220">
+          <circle class="ring-bg" cx="110" cy="110" r="98"></circle>
+          <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="98"></circle>
+        </svg>
+        <div class="time-label" id="timeLabel">—</div>
+      </div>
+      <p class="cue" id="cueText">Appuie sur « Démarrer » pour lancer la séance : le chrono t'accompagne exercice par exercice, avec les temps de repos.</p>
+      <div class="controls" id="controls">
+        <button class="btn-primary" id="btnStart">Démarrer la séance</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Programme &amp; durées de travail</p>
+    <div id="progList"></div>
+    <p class="hint">Ajuste la durée de travail estimée pour chaque exercice (en secondes) — utile pour Vacuum, Bird-Dog et Dead Bug qui sont comptés en répétitions plutôt qu'en temps.</p>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Synchroniser avec Google Agenda</p>
+    <div class="cal-row">
+      <label for="calTime" style="font-family:sans-serif;font-size:13px;">Heure de la séance :</label>
+      <input type="time" id="calTime" value="18:30">
+      <button class="btn-ghost" id="btnIcs">Télécharger le fichier .ics</button>
+    </div>
+    <p class="hint">Le fichier .ics crée un événement récurrent chaque lundi, mercredi et vendredi. Ouvre-le, ou importe-le dans Google Agenda via <em>Paramètres → Importer et exporter → Importer</em>, pour qu'il apparaisse directement dans ton agenda.</p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const EXERCISES = [
+    {id:'vacuum', name:'Vacuum', reps:'10 répétitions (maintien 5-10s)', cue:"Expiration totale, aspirer le nombril vers la colonne. Cible le transverse sans aucune pression lombaire.", defaultWork:60},
+    {id:'birddog', name:'Bird-Dog', reps:'10 rép. / côté', cue:"À quatre pattes, tendre bras et jambe opposés. Dos neutre (ne pas creuser). Protège et renforce le bas du dos.", defaultWork:50},
+    {id:'gfrontal', name:'Gainage Frontal', reps:'30 à 45 secondes', cue:"Sur genoux ou pieds. Coudes sous les épaules, fessiers serrés. Consolide la ceinture abdominale.", defaultWork:40},
+    {id:'glateral', name:'Gainage Latéral', reps:'30 s. / côté', cue:"Sur l'avant-bras et genou/pied. Aligner tête, buste et bassin. Dessine et resserre les obliques.", defaultWork:60},
+    {id:'deadbug', name:'Dead Bug', reps:'10 rép. / côté', cue:"Sur le dos, bas du dos plaqué au sol. Descendre bras et jambe opposés lentement. Replace les crunches.", defaultWork:50},
+  ];
+  const ROUNDS = 3;
+  const REST_S = 45;
+  const DAY_NAMES = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const TRAIN_DAYS = [1,3,5]; // Lundi, Mercredi, Vendredi
+
+  let config = {durations:{}};
+  EXERCISES.forEach(e => config.durations[e.id] = e.defaultWork);
+  let sessions = {}; // {'YYYY-MM-DD': true}
+
+  const dateKey = d => {
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  };
+  const startOfWeek = (d) => {
+    const dt = new Date(d);
+    const dow = dt.getDay(); // 0=Sun
+    const diff = (dow === 0 ? -6 : 1) - dow;
+    dt.setDate(dt.getDate()+diff);
+    dt.setHours(0,0,0,0);
+    return dt;
+  };
+
+  async function loadData(){
+    try{
+      const c = await window.storage.get('circuit-config');
+      if(c && c.value) config = JSON.parse(c.value);
+    }catch(e){}
+    try{
+      const s = await window.storage.get('circuit-sessions');
+      if(s && s.value) sessions = JSON.parse(s.value);
+    }catch(e){}
+    renderWeek();
+    renderProgList();
+  }
+  async function saveConfig(){
+    try{ await window.storage.set('circuit-config', JSON.stringify(config)); }catch(e){}
+  }
+  async function saveSessions(){
+    try{ await window.storage.set('circuit-sessions', JSON.stringify(sessions)); }catch(e){}
+  }
+
+  function renderWeek(){
+    const row = document.getElementById('weekRow');
+    row.innerHTML = '';
+    const today = new Date();
+    const monday = startOfWeek(today);
+    let doneCount = 0;
+    for(let i=0;i<7;i++){
+      const d = new Date(monday);
+      d.setDate(monday.getDate()+i);
+      const dow = d.getDay();
+      const isTrain = TRAIN_DAYS.includes(dow);
+      const key = dateKey(d);
+      const isDone = !!sessions[key];
+      const isToday = dateKey(d) === dateKey(today);
+      if(isTrain && isDone) doneCount++;
+      const cell = document.createElement('div');
+      cell.className = 'day-cell' + (isTrain? ' train':' rest') + (isDone? ' done':'') + (isToday? ' today':'');
+      cell.innerHTML = `<div class="dname">${DAY_NAMES[dow]}</div><div class="dnum">${isDone?'✓':d.getDate()}</div>`;
+      if(isTrain){
+        cell.addEventListener('click', () => {
+          sessions[key] = !sessions[key];
+          saveSessions();
+          renderWeek();
+        });
+      }
+      row.appendChild(cell);
+    }
+    document.getElementById('weekSummary').textContent = `${doneCount} / ${TRAIN_DAYS.length} séances faites cette semaine`;
+  }
+
+  function renderProgList(){
+    const list = document.getElementById('progList');
+    list.innerHTML = '';
+    EXERCISES.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'prog-item';
+      row.innerHTML = `<div><div class="pn">${e.name}</div><div class="pr">${e.reps}</div></div>
+        <input type="number" min="10" max="180" step="5" value="${config.durations[e.id]}" data-id="${e.id}">`;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        config.durations[inp.dataset.id] = parseInt(inp.value)||30;
+        saveConfig();
+      });
+    });
+  }
+
+  // ---- Timer / session engine ----
+  const RING_R = 98, RING_C = 2*Math.PI*RING_R;
+  const ringFg = document.getElementById('ringFg');
+  ringFg.style.strokeDasharray = RING_C;
+  ringFg.style.strokeDashoffset = 0;
+
+  let steps = []; // sequence of {type:'work'|'rest', ex, round}
+  let stepIndex = 0;
+  let remaining = 0;
+  let total = 0;
+  let timerHandle = null;
+  let running = false;
+  let audioCtx = null;
+
+  function buildSteps(){
+    steps = [];
+    for(let r=1;r<=ROUNDS;r++){
+      EXERCISES.forEach((e, idx) => {
+        steps.push({type:'work', ex:e, round:r});
+        const isLast = (r===ROUNDS && idx===EXERCISES.length-1);
+        if(!isLast) steps.push({type:'rest', round:r});
+      });
+    }
+  }
+
+  function beep(freq, dur){
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.frequency.value = freq;
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      o.start();
+      o.stop(audioCtx.currentTime + dur);
+    }catch(e){}
+  }
+
+  function fmtTime(s){
+    const m = Math.floor(s/60), r = s%60;
+    return `${m}:${String(r).padStart(2,'0')}`;
+  }
+
+  function renderStep(){
+    const step = steps[stepIndex];
+    const roundTag = document.getElementById('roundTag');
+    const exName = document.getElementById('exName');
+    const exReps = document.getElementById('exReps');
+    const cueText = document.getElementById('cueText');
+    if(!step){
+      roundTag.textContent = 'Terminé';
+      exName.textContent = 'Séance complète 🎉';
+      exReps.textContent = '3 tours effectués';
+      cueText.textContent = "Bravo, séance enregistrée dans ton planning de la semaine.";
+      document.getElementById('timeLabel').textContent = '✓';
+      ringFg.classList.remove('rest');
+      ringFg.style.strokeDashoffset = 0;
+      markTodayDone();
+      renderControlsIdle();
+      return;
+    }
+    roundTag.textContent = `Tour ${step.round} / ${ROUNDS} · ${step.type==='rest'?'Repos':'Exercice'}`;
+    if(step.type==='work'){
+      exName.textContent = step.ex.name;
+      exReps.textContent = step.ex.reps;
+      cueText.textContent = step.ex.cue;
+      ringFg.classList.remove('rest');
+    } else {
+      exName.textContent = 'Repos';
+      exReps.textContent = 'Récupération avant le prochain exercice';
+      const next = steps[stepIndex+1];
+      cueText.textContent = next ? `Prochain : ${next.ex.name}` : 'Dernière ligne droite.';
+      ringFg.classList.add('rest');
+    }
+  }
+
+  function updateRing(){
+    const label = document.getElementById('timeLabel');
+    label.textContent = fmtTime(remaining);
+    const frac = total>0 ? remaining/total : 0;
+    ringFg.style.strokeDashoffset = RING_C * (1-frac);
+  }
+
+  function tick(){
+    remaining--;
+    if(remaining < 0){
+      stepIndex++;
+      beep(steps[stepIndex] && steps[stepIndex].type==='work' ? 880:440, 0.18);
+      if(navigator.vibrate) navigator.vibrate(120);
+      startStep();
+      return;
+    }
+    updateRing();
+  }
+
+  function startStep(){
+    const step = steps[stepIndex];
+    if(!step){
+      clearInterval(timerHandle);
+      timerHandle = null;
+      running = false;
+      renderStep();
+      return;
+    }
+    total = step.type==='rest' ? REST_S : (config.durations[step.ex.id] || step.ex.defaultWork);
+    remaining = total;
+    renderStep();
+    updateRing();
+  }
+
+  function renderControlsRunning(){
+    document.getElementById('controls').innerHTML = `
+      <button class="btn-quiet" id="btnPause">Pause</button>
+      <button class="btn-ghost" id="btnSkip">Passer</button>
+      <button class="btn-ghost" id="btnStop">Arrêter</button>`;
+    document.getElementById('btnPause').onclick = togglePause;
+    document.getElementById('btnSkip').onclick = skipStep;
+    document.getElementById('btnStop').onclick = stopSession;
+  }
+  function renderControlsPaused(){
+    document.getElementById('controls').innerHTML = `
+      <button class="btn-primary" id="btnResume">Reprendre</button>
+      <button class="btn-ghost" id="btnSkip">Passer</button>
+      <button class="btn-ghost" id="btnStop">Arrêter</button>`;
+    document.getElementById('btnResume').onclick = togglePause;
+    document.getElementById('btnSkip').onclick = skipStep;
+    document.getElementById('btnStop').onclick = stopSession;
+  }
+  function renderControlsIdle(){
+    document.getElementById('controls').innerHTML = `<button class="btn-primary" id="btnStart">Démarrer la séance</button>`;
+    document.getElementById('btnStart').onclick = startSession;
+  }
+
+  function startSession(){
+    buildSteps();
+    stepIndex = 0;
+    running = true;
+    startStep();
+    renderControlsRunning();
+    timerHandle = setInterval(tick, 1000);
+  }
+  function togglePause(){
+    if(running){
+      clearInterval(timerHandle); timerHandle=null; running=false;
+      renderControlsPaused();
+    } else {
+      running = true;
+      renderControlsRunning();
+      timerHandle = setInterval(tick, 1000);
+    }
+  }
+  function skipStep(){
+    stepIndex++;
+    startStep();
+    if(running) {} // interval keeps running
+  }
+  function stopSession(){
+    clearInterval(timerHandle); timerHandle=null; running=false;
+    stepIndex = 0; steps = [];
+    document.getElementById('roundTag').textContent = 'Prêt';
+    document.getElementById('exName').textContent = 'Circuit du jour';
+    document.getElementById('exReps').textContent = '5 exercices · 3 tours';
+    document.getElementById('cueText').textContent = "Appuie sur « Démarrer » pour lancer la séance : le chrono t'accompagne exercice par exercice, avec les temps de repos.";
+    document.getElementById('timeLabel').textContent = '—';
+    ringFg.style.strokeDashoffset = 0;
+    renderControlsIdle();
+  }
+
+  function markTodayDone(){
+    const key = dateKey(new Date());
+    sessions[key] = true;
+    saveSessions();
+    renderWeek();
+  }
+
+  document.getElementById('btnStart').onclick = startSession;
+
+  // ---- .ics export ----
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function buildIcs(){
+    const timeVal = document.getElementById('calTime').value || '18:30';
+    const [hh,mm] = timeVal.split(':').map(Number);
+    const now = new Date();
+    // find next occurrence among Mon/Wed/Fri at chosen time, starting today if still upcoming
+    let start = new Date(now);
+    start.setHours(hh, mm, 0, 0);
+    for(let i=0;i<8;i++){
+      if(TRAIN_DAYS.includes(start.getDay()) && start > now) break;
+      start.setDate(start.getDate()+1);
+      start.setHours(hh, mm, 0, 0);
+    }
+    const end = new Date(start.getTime() + 30*60000);
+    const fmt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    const uid = 'circuit-gainage-' + Date.now() + '@bertrand';
+    const ics = [
+      'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Circuit Gainage//FR','CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${fmt(now)}`,
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR',
+      'SUMMARY:Circuit Gainage (3 tours)',
+      'DESCRIPTION:Vacuum, Bird-Dog, Gainage Frontal, Gainage Lateral, Dead Bug — 3 tours, 45s de repos entre chaque exercice.',
+      'END:VEVENT','END:VCALENDAR'
+    ].join('\r\n');
+    return ics;
+  }
+  document.getElementById('btnIcs').onclick = () => {
+    const blob = new Blob([buildIcs()], {type:'text/calendar'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'circuit-gainage.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  loadData();
+})();
+</script>
+</body>
+</html>
